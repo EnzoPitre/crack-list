@@ -145,6 +145,17 @@
         }
         .btn-party:active { transform: scale(0.95); }
 
+        /* NOUVEAU BOUTON THEME */
+        .btn-theme {
+            background: rgba(0,0,0,0.4);
+            border: 2px solid rgba(255,255,255,0.3);
+            transition: 0.3s;
+        }
+        .btn-theme:active {
+            background: rgba(255,255,255,0.2);
+            transform: scale(0.95);
+        }
+
     </style>
 </head>
 <body class="h-screen flex flex-col">
@@ -158,7 +169,7 @@
     </div>
 
     <!-- HEADER -->
-    <header class="flex-none pt-6 pb-2 text-center z-10 relative">
+    <header class="flex-none pt-4 pb-2 text-center z-10 relative">
         <div class="inline-block relative transform hover:scale-105 transition duration-300">
             <!-- Glow effect -->
             <div class="absolute inset-0 bg-white blur-2xl opacity-30 rounded-full"></div>
@@ -167,15 +178,17 @@
     </header>
 
     <!-- MAIN: Timer Area -->
-    <main id="timer-area" class="flex-grow flex flex-col items-center justify-center relative cursor-pointer select-none active:scale-[0.98] transition-transform duration-100">
+    <main id="timer-area" class="flex-grow flex flex-col items-center justify-center relative select-none">
         
         <!-- Instruction -->
-        <div id="instruction-text" class="absolute top-2 text-white/80 text-sm font-bold uppercase tracking-widest animate-pulse pointer-events-none bg-black/20 px-4 py-1 rounded-full">
-            Appuyez n'importe où
+        <!-- Changement: Position relative (mb-4) au lieu de absolute pour éviter les chevauchements -->
+        <div id="instruction-text" class="mb-4 text-white/90 text-sm font-bold uppercase tracking-widest animate-pulse pointer-events-none bg-black/20 px-4 py-1 rounded-full border border-white/10 shadow-lg">
+            Appuyez sur le cercle
         </div>
 
         <!-- Timer Circle Container -->
-        <div id="timer-container" class="relative w-64 h-64 md:w-80 md:h-80 flex items-center justify-center rounded-full glass-bubble shadow-2xl">
+        <!-- Ajout de l'événement onclick directement sur le cercle pour séparer du fond si besoin, mais ici le main gère tout -->
+        <div id="timer-container" class="relative w-64 h-64 md:w-80 md:h-80 flex items-center justify-center rounded-full glass-bubble shadow-2xl cursor-pointer active:scale-[0.98] transition-transform duration-100">
             
             <!-- SVG Progress Ring -->
             <svg class="progress-ring absolute w-full h-full transform drop-shadow-lg" width="320" height="320">
@@ -202,14 +215,19 @@
             </svg>
 
             <!-- Time Display -->
-            <div class="z-10 text-center">
+            <div class="z-10 text-center pointer-events-none">
                 <span id="time-display" class="timer-font text-8xl md:text-9xl text-white drop-shadow-[0_4px_4px_rgba(0,0,0,0.5)]">20</span>
                 <span class="block text-white/80 text-lg uppercase tracking-wider font-bold mt-[-10px] text-shadow">Secondes</span>
             </div>
         </div>
 
-        <!-- Status Message -->
-        <div id="status-message" class="h-10 mt-8 px-6 py-1 rounded-lg bg-black/20 backdrop-blur text-2xl font-black text-white tracking-wide text-center shadow-lg uppercase transform transition-all">
+        <!-- Nouveau Bouton Changement de thème -->
+        <button id="new-theme-btn" onclick="hardReset()" class="mt-6 btn-theme px-6 py-2 rounded-full text-white font-bold uppercase tracking-widest flex items-center gap-2 shadow-lg backdrop-blur-sm hover:bg-white/10">
+            <i class="fas fa-random"></i> Crack List ! (Nouveau Thème)
+        </button>
+
+        <!-- Status Message (Caché si pas nécessaire, ou plus discret) -->
+        <div id="status-message" class="h-6 mt-2 text-white/80 font-bold uppercase tracking-wide text-center text-sm">
             PRÊT ?
         </div>
 
@@ -219,10 +237,17 @@
     <section class="flex-none h-1/3 glass-panel rounded-t-[40px] flex flex-col z-20 overflow-hidden">
         
         <!-- Header Score -->
-        <div class="flex items-center justify-between p-5 pb-3">
-            <h2 class="text-xl font-bold flex items-center gap-2 text-white text-shadow">
-                <i class="fas fa-crown text-yellow-300"></i> Scores
-            </h2>
+        <div class="flex items-center justify-between p-4 pb-2 border-b border-white/10">
+            <div class="flex items-center gap-3">
+                <h2 class="text-xl font-bold flex items-center gap-2 text-white text-shadow">
+                    <i class="fas fa-crown text-yellow-300"></i> Scores
+                </h2>
+                <!-- Bouton Reset Liste -->
+                <button onclick="clearAllPlayers()" class="text-white/50 hover:text-red-400 transition" title="Tout effacer">
+                    <i class="fas fa-trash-alt"></i>
+                </button>
+            </div>
+            
             <button onclick="toggleAddPlayer()" class="btn-party px-4 py-2 rounded-full text-sm font-bold uppercase tracking-wide">
                 <i class="fas fa-plus mr-1"></i> Joueur
             </button>
@@ -271,6 +296,12 @@
 
         function playTick() { playTone(800, 'sine', 0.05, 0.1); } // Tic plus doux
         function playReset() { playTone(600, 'triangle', 0.1, 0.2); playTone(1200, 'sine', 0.1, 0.2); } // "Bling" effect
+        function playNewTheme() { 
+            // Son spécial pour nouveau thème (montant)
+            playTone(400, 'sine', 0.1, 0.2); 
+            setTimeout(() => playTone(600, 'sine', 0.1, 0.2), 100);
+            setTimeout(() => playTone(800, 'sine', 0.2, 0.2), 200);
+        }
         function playEnd() { 
             if (audioCtx.state === 'suspended') audioCtx.resume();
             const osc = audioCtx.createOscillator();
@@ -288,10 +319,10 @@
         }
 
         // --- DOM ELEMENTS ---
-        const timerArea = document.getElementById('timer-area');
+        const timerArea = document.getElementById('timer-area'); // Main container
+        const timerContainer = document.getElementById('timer-container'); // The circle itself
         const timeDisplay = document.getElementById('time-display');
         const circle = document.querySelector('.progress-ring__circle');
-        const timerContainer = document.getElementById('timer-container');
         const statusMessage = document.getElementById('status-message');
         const gameOverScreen = document.getElementById('game-over-screen');
         
@@ -346,7 +377,7 @@
             setTimeout(() => {
                 timerContainer.classList.remove('shake-effect');
                 gameOverScreen.classList.remove('active');
-                statusMessage.textContent = "Rejouer ?";
+                statusMessage.textContent = "Appuyez pour rejouer";
                 statusMessage.style.color = "white";
             }, 2000);
         }
@@ -358,7 +389,7 @@
             isRunning = true;
             isFinished = false;
             updateDisplay();
-            statusMessage.textContent = "C'EST PARTI !";
+            statusMessage.textContent = "EN COURS...";
             statusMessage.style.color = "#a7f3d0";
             
             timerContainer.classList.remove('pulse-effect');
@@ -389,10 +420,31 @@
             }, 50); 
         }
 
+        // Nouvelle fonction pour le bouton "Nouveau Thème"
+        function hardReset() {
+            stopTimer();
+            timeLeft = DURATION;
+            lastSecond = DURATION;
+            isRunning = false;
+            isFinished = false;
+            updateDisplay();
+            statusMessage.textContent = "NOUVEAU THÈME - PRÊT ?";
+            statusMessage.style.color = "white";
+            
+            // Animation reset visuel
+            timerContainer.classList.remove('pulse-effect');
+            void timerContainer.offsetWidth; 
+            timerContainer.style.boxShadow = '0 0 0 rgba(255,255,255,0)';
+            
+            playNewTheme();
+        }
+
         function handleTap(e) {
+            // Empêche le déclenchement si on clique sur un bouton interactif
             if (e.target.closest('button') || e.target.closest('input') || e.target.closest('section')) return;
             if (gameOverScreen.classList.contains('active')) return;
 
+            // On ne réagit que si on clique sur le timer ou la zone principale, pas les boutons
             e.preventDefault(); 
 
             if (isFinished) {
@@ -404,6 +456,7 @@
             }
         }
 
+        // Écouteur sur la zone principale
         timerArea.addEventListener('mousedown', handleTap);
         timerArea.addEventListener('touchstart', handleTap);
         
@@ -428,7 +481,6 @@
 
             players.forEach((player, index) => {
                 const div = document.createElement('div');
-                // Style Glass pour les joueurs
                 div.className = 'flex items-center justify-between bg-black/30 p-3 rounded-2xl border border-white/10 shadow-lg backdrop-blur-sm transform transition hover:scale-[1.02]';
                 div.innerHTML = `
                     <div class="flex items-center gap-3">
@@ -481,6 +533,14 @@
         function removePlayer(index) {
             if(confirm('Supprimer ce joueur ?')) {
                 players.splice(index, 1);
+                renderPlayers();
+            }
+        }
+
+        // Nouvelle fonction pour tout effacer
+        function clearAllPlayers() {
+            if(players.length > 0 && confirm('Voulez-vous vraiment effacer toute la liste des joueurs ?')) {
+                players = [];
                 renderPlayers();
             }
         }
