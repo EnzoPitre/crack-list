@@ -1,0 +1,311 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { Trophy, Plus, Minus, X, Volume2, VolumeX } from 'lucide-react';
+
+const App = () => {
+    const MAX_TIME = 20;
+    const [timeLeft, setTimeLeft] = useState(MAX_TIME);
+    const [isActive, setIsActive] = useState(false);
+    const [isTimeUp, setIsTimeUp] = useState(false);
+    const [soundEnabled, setSoundEnabled] = useState(true);
+    
+    // Scoreboard state
+    const [players, setPlayers] = useState([]);
+    const [newPlayerName, setNewPlayerName] = useState('');
+
+    const timerRef = useRef(null);
+
+    // Sound Generator (Browser Audio API)
+    const playSound = (type) => {
+        if (!soundEnabled) return;
+
+        try {
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            if (!AudioContext) return;
+            
+            const ctx = new AudioContext();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+
+            if (type === 'tick') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(800, ctx.currentTime);
+                gain.gain.setValueAtTime(0.1, ctx.currentTime);
+                osc.start();
+                osc.stop(ctx.currentTime + 0.05);
+            } else if (type === 'reset') {
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(1200, ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(600, ctx.currentTime + 0.1);
+                gain.gain.setValueAtTime(0.2, ctx.currentTime);
+                osc.start();
+                osc.stop(ctx.currentTime + 0.15);
+            } else if (type === 'end') {
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(200, ctx.currentTime);
+                osc.frequency.linearRampToValueAtTime(100, ctx.currentTime + 0.5);
+                gain.gain.setValueAtTime(0.3, ctx.currentTime);
+                gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.5);
+                osc.start();
+                osc.stop(ctx.currentTime + 0.5);
+            }
+        } catch (e) {
+            console.error("Audio error", e);
+        }
+    };
+
+    // Timer Logic
+    useEffect(() => {
+        if (isActive && timeLeft > 0) {
+            timerRef.current = setInterval(() => {
+                setTimeLeft((prev) => {
+                    if (prev <= 1) {
+                        handleTimeUp();
+                        return 0;
+                    }
+                    // Tick sound on last 5 seconds
+                    if (prev <= 6) playSound('tick');
+                    return prev - 1;
+                });
+            }, 1000);
+        } else {
+            clearInterval(timerRef.current);
+        }
+        return () => clearInterval(timerRef.current);
+    }, [isActive, timeLeft, soundEnabled]); // Removed playSound from dependency to avoid loop
+
+    const handleTimeUp = () => {
+        setIsActive(false);
+        setIsTimeUp(true);
+        playSound('end');
+    };
+
+    const handleMainButton = () => {
+        playSound('reset');
+        
+        // Logic: Always reset to MAX_TIME and Start
+        setTimeLeft(MAX_TIME);
+        setIsActive(true);
+        setIsTimeUp(false);
+    };
+
+    const pauseTimer = (e) => {
+        e.stopPropagation(); // Don't trigger main button
+        setIsActive(false);
+    };
+
+    // Player Logic
+    const addPlayer = (e) => {
+        e.preventDefault();
+        if (!newPlayerName.trim()) return;
+        setPlayers([...players, { id: Date.now(), name: newPlayerName, score: 0 }]);
+        setNewPlayerName('');
+    };
+
+    const updateScore = (id, delta) => {
+        setPlayers(players.map(p => 
+            p.id === id ? { ...p, score: Math.max(0, p.score + delta) } : p
+        ));
+    };
+
+    const removePlayer = (id) => {
+        setPlayers(players.filter(p => p.id !== id));
+    };
+
+    // Dynamic Styles
+    const getBgColor = () => {
+        if (isTimeUp) return 'bg-red-500';
+        if (!isActive && timeLeft === MAX_TIME) return 'bg-indigo-500';
+        if (timeLeft <= 5) return 'bg-orange-500';
+        return 'bg-green-500';
+    };
+
+    return (
+        <div className="min-h-screen bg-slate-100 flex flex-col items-center pb-10 font-sans">
+            <style>{`
+                @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap');
+                
+                body, .font-sans {
+                    font-family: 'Fredoka', sans-serif;
+                }
+
+                .card-shadow {
+                    box-shadow: 8px 8px 0px 0px rgba(0,0,0,0.1);
+                }
+
+                .timer-active {
+                    animation: pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+                }
+
+                @keyframes pulse {
+                    0%, 100% { transform: scale(1); }
+                    50% { transform: scale(1.02); }
+                }
+
+                .shake {
+                    animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+                }
+
+                @keyframes shake {
+                    10%, 90% { transform: translate3d(-1px, 0, 0); }
+                    20%, 80% { transform: translate3d(2px, 0, 0); }
+                    30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+                    40%, 60% { transform: translate3d(4px, 0, 0); }
+                }
+                
+                .no-scrollbar::-webkit-scrollbar {
+                    display: none;
+                }
+                .no-scrollbar {
+                    -ms-overflow-style: none;
+                    scrollbar-width: none;
+                }
+            `}</style>
+            
+            {/* Header / Logo */}
+            <div className="w-full bg-white p-4 shadow-sm flex justify-between items-center z-10 sticky top-0">
+                <img 
+                    src="https://i.postimg.cc/j5DK63qy/logo.webp" 
+                    alt="Crack List Logo" 
+                    className="h-10 md:h-12 object-contain"
+                    onError={(e) => {e.target.style.display='none'; e.target.parentElement.innerText='CRACK LIST TIMER'}}
+                />
+                <button 
+                    onClick={() => setSoundEnabled(!soundEnabled)}
+                    className="p-2 rounded-full hover:bg-slate-100 text-slate-600"
+                >
+                    {soundEnabled ? <Volume2 size={24} /> : <VolumeX size={24} />}
+                </button>
+            </div>
+
+            {/* MAIN TIMER AREA */}
+            <div className="w-full max-w-md px-6 mt-6 mb-8">
+                <div 
+                    onClick={handleMainButton}
+                    className={`
+                        relative w-full aspect-square rounded-3xl card-shadow 
+                        flex flex-col justify-center items-center cursor-pointer
+                        transition-all duration-200 transform active:scale-95
+                        ${getBgColor()} text-white
+                        ${isTimeUp ? 'shake' : ''}
+                    `}
+                >
+                    {/* Status Text */}
+                    <div className="absolute top-8 text-xl font-bold opacity-80 uppercase tracking-widest">
+                        {isTimeUp ? "TERMINÉ !" : isActive ? "EN COURS..." : "APPUYER POUR DÉMARRER"}
+                    </div>
+
+                    {/* Huge Counter */}
+                    <div className="text-[10rem] font-bold leading-none select-none drop-shadow-lg">
+                        {timeLeft}
+                    </div>
+                    
+                    {/* Instruction */}
+                    <div className="absolute bottom-8 text-center px-4 font-semibold opacity-90">
+                        {isTimeUp 
+                            ? "Toucher pour relancer une manche" 
+                            : "Toucher pour passer au suivant (Reset 20s)"
+                        }
+                    </div>
+                </div>
+
+                {/* Controls below timer */}
+                <div className="flex justify-center mt-6 gap-4">
+                    {isActive && (
+                        <button 
+                            onClick={pauseTimer}
+                            className="bg-yellow-400 hover:bg-yellow-500 text-yellow-900 font-bold py-3 px-8 rounded-full shadow-lg transform transition active:scale-95"
+                        >
+                            PAUSE
+                        </button>
+                    )}
+                </div>
+            </div>
+
+            {/* SCOREBOARD SECTION */}
+            <div className="w-full max-w-md px-4">
+                <div className="bg-white rounded-2xl shadow-lg overflow-hidden border border-slate-200">
+                    
+                    {/* Score Header */}
+                    <div className="bg-slate-800 p-4 flex justify-between items-center text-white">
+                        <div className="flex items-center gap-2 font-bold text-lg">
+                            <Trophy className="text-yellow-400" size={24} />
+                            Scores
+                        </div>
+                        <div className="text-sm opacity-70">
+                            {players.length} Joueurs
+                        </div>
+                    </div>
+
+                    {/* Add Player Form */}
+                    <form onSubmit={addPlayer} className="p-4 border-b border-slate-100 flex gap-2">
+                        <input 
+                            type="text" 
+                            value={newPlayerName}
+                            onChange={(e) => setNewPlayerName(e.target.value)}
+                            placeholder="Prénom du joueur..."
+                            className="flex-1 px-4 py-2 rounded-lg bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        />
+                        <button 
+                            type="submit"
+                            disabled={!newPlayerName.trim()}
+                            className="bg-indigo-600 disabled:opacity-50 text-white p-2 rounded-lg hover:bg-indigo-700 transition"
+                        >
+                            <Plus size={24} />
+                        </button>
+                    </form>
+
+                    {/* Player List */}
+                    <div className="max-h-64 overflow-y-auto no-scrollbar">
+                        {players.length === 0 ? (
+                            <div className="p-8 text-center text-slate-400 italic">
+                                Ajoutez les joueurs ici pour compter les manches gagnées !
+                            </div>
+                        ) : (
+                            <div className="divide-y divide-slate-100">
+                                {players.map(player => (
+                                    <div key={player.id} className="p-4 flex items-center justify-between hover:bg-slate-50">
+                                        <div className="flex items-center gap-3">
+                                            <button 
+                                                onClick={() => removePlayer(player.id)}
+                                                className="text-slate-300 hover:text-red-400"
+                                            >
+                                                <X size={18} />
+                                            </button>
+                                            <span className="font-bold text-slate-700 text-lg">{player.name}</span>
+                                        </div>
+                                        
+                                        <div className="flex items-center gap-3 bg-slate-100 rounded-full p-1">
+                                            <button 
+                                                onClick={() => updateScore(player.id, -1)}
+                                                className="w-8 h-8 flex items-center justify-center bg-white rounded-full shadow-sm text-slate-600 active:bg-slate-200"
+                                            >
+                                                <Minus size={16} />
+                                            </button>
+                                            <span className="w-6 text-center font-bold text-indigo-600">{player.score}</span>
+                                            <button 
+                                                onClick={() => updateScore(player.id, 1)}
+                                                className="w-8 h-8 flex items-center justify-center bg-white rounded-full shadow-sm text-green-600 active:bg-green-100"
+                                            >
+                                                <Plus size={16} />
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div>
+
+            <footer className="mt-8 text-slate-400 text-xs text-center px-4">
+                Outil non-officiel d'aide au jeu. Amusez-vous bien !<br/>
+                Touchez le chronomètre pour valider votre tour.
+            </footer>
+        </div>
+    );
+};
+
+export default App;
