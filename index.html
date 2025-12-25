@@ -10,14 +10,84 @@
     <style>
         body {
             font-family: 'Poppins', sans-serif;
-            /* FOND FESTIF : Dégradé animé */
+            /* FOND FESTIF (Défaut) */
             background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab);
             background-size: 400% 400%;
             animation: gradientBG 15s ease infinite;
             color: white;
             overflow: hidden;
             touch-action: manipulation;
+            transition: background 0.5s, color 0.5s;
         }
+
+        /* --- THEME CLAIR (LIGHT MODE) --- */
+        body.light-mode {
+            background: #f0f2f5;
+            animation: none;
+            color: #1f2937;
+        }
+
+        body.light-mode .glass-panel {
+            background: rgba(255, 255, 255, 0.95);
+            border-top: 1px solid #e5e7eb;
+            box-shadow: 0 -4px 20px rgba(0,0,0,0.05);
+        }
+
+        body.light-mode .glass-bubble {
+            background: white;
+            border: 4px solid #e5e7eb;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+        }
+        
+        body.light-mode #time-display {
+            color: #1f2937;
+            text-shadow: none;
+            drop-shadow: none;
+        }
+        
+        body.light-mode .text-shadow {
+            text-shadow: none;
+        }
+
+        body.light-mode #instruction-text {
+            background: rgba(0,0,0,0.05);
+            color: #6b7280;
+            border: 1px solid rgba(0,0,0,0.1);
+        }
+
+        body.light-mode .btn-theme {
+            background: white;
+            color: #374151;
+            border: 1px solid #d1d5db;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+
+        body.light-mode #player-list > div {
+            background: white;
+            border: 1px solid #e5e7eb;
+            color: #1f2937;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.02);
+        }
+        
+        body.light-mode #player-list span.text-white {
+            color: #1f2937;
+        }
+
+        body.light-mode .player-score-bg {
+            background: #f3f4f6;
+        }
+        
+        body.light-mode .text-yellow-300 {
+            color: #d97706; /* Darker yellow/orange for light mode visibility */
+        }
+        
+        body.light-mode .text-white\/40 { color: #9ca3af; }
+        body.light-mode .text-white\/50 { color: #6b7280; }
+        body.light-mode .text-white\/80 { color: #4b5563; }
+        body.light-mode .text-white { color: #111827; }
+
+        /* --- FIN THEME CLAIR --- */
+
 
         @keyframes gradientBG {
             0% { background-position: 0% 50%; }
@@ -36,6 +106,10 @@
             transform: rotate(-90deg);
             transform-origin: 50% 50%;
             filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.5));
+        }
+        
+        body.light-mode .progress-ring__circle {
+            filter: none;
         }
 
         /* EFFET PULSE (Battement de coeur) */
@@ -117,12 +191,14 @@
             -webkit-backdrop-filter: blur(12px);
             border-top: 1px solid rgba(255, 255, 255, 0.3);
             box-shadow: 0 -10px 30px rgba(0,0,0,0.1);
+            transition: background 0.3s;
         }
 
         .glass-bubble {
             background: rgba(0, 0, 0, 0.2);
             border: 1px solid rgba(255, 255, 255, 0.1);
             backdrop-filter: blur(5px);
+            transition: background 0.3s, border 0.3s;
         }
 
         /* TEXTE OMBRÉ pour lisibilité */
@@ -145,7 +221,7 @@
         }
         .btn-party:active { transform: scale(0.95); }
 
-        /* NOUVEAU BOUTON THEME */
+        /* BOUTON THEME */
         .btn-theme {
             background: rgba(0,0,0,0.4);
             border: 2px solid rgba(255,255,255,0.3);
@@ -155,10 +231,47 @@
             background: rgba(255,255,255,0.2);
             transform: scale(0.95);
         }
+        
+        /* CONTROL BUTTONS (Top Right) */
+        .control-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0,0,0,0.2);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.2);
+            backdrop-filter: blur(4px);
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+        .control-btn:hover {
+            background: rgba(255,255,255,0.2);
+            transform: scale(1.1);
+        }
+        
+        body.light-mode .control-btn {
+            background: white;
+            color: #4b5563;
+            border: 1px solid #d1d5db;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
 
     </style>
 </head>
 <body class="h-screen flex flex-col">
+
+    <!-- CONTROLS (Fullscreen / Theme) -->
+    <div class="absolute top-4 right-4 z-50 flex gap-3">
+        <button onclick="toggleTheme()" class="control-btn" title="Changer de thème">
+            <i id="theme-icon" class="fas fa-sun"></i>
+        </button>
+        <button onclick="toggleFullScreen()" class="control-btn" title="Plein écran">
+            <i id="fullscreen-icon" class="fas fa-expand"></i>
+        </button>
+    </div>
 
     <!-- Écran de défaite -->
     <div id="game-over-screen">
@@ -181,19 +294,18 @@
     <main id="timer-area" class="flex-grow flex flex-col items-center justify-center relative select-none">
         
         <!-- Instruction -->
-        <!-- Changement: Position relative (mb-4) au lieu de absolute pour éviter les chevauchements -->
-        <div id="instruction-text" class="mb-4 text-white/90 text-sm font-bold uppercase tracking-widest animate-pulse pointer-events-none bg-black/20 px-4 py-1 rounded-full border border-white/10 shadow-lg">
+        <div id="instruction-text" class="mb-4 text-white/90 text-sm font-bold uppercase tracking-widest animate-pulse pointer-events-none bg-black/20 px-4 py-1 rounded-full border border-white/10 shadow-lg transition-colors">
             Appuyez sur le cercle
         </div>
 
         <!-- Timer Circle Container -->
-        <!-- Ajout de l'événement onclick directement sur le cercle pour séparer du fond si besoin, mais ici le main gère tout -->
         <div id="timer-container" class="relative w-64 h-64 md:w-80 md:h-80 flex items-center justify-center rounded-full glass-bubble shadow-2xl cursor-pointer active:scale-[0.98] transition-transform duration-100">
             
             <!-- SVG Progress Ring -->
             <svg class="progress-ring absolute w-full h-full transform drop-shadow-lg" width="320" height="320">
                 <!-- Background circle for contrast -->
                 <circle
+                    id="bg-circle"
                     stroke="rgba(255,255,255,0.1)"
                     stroke-width="12"
                     fill="transparent"
@@ -216,8 +328,8 @@
 
             <!-- Time Display -->
             <div class="z-10 text-center pointer-events-none">
-                <span id="time-display" class="timer-font text-8xl md:text-9xl text-white drop-shadow-[0_4px_4px_rgba(0,0,0,0.5)]">20</span>
-                <span class="block text-white/80 text-lg uppercase tracking-wider font-bold mt-[-10px] text-shadow">Secondes</span>
+                <span id="time-display" class="timer-font text-8xl md:text-9xl text-white drop-shadow-[0_4px_4px_rgba(0,0,0,0.5)] transition-colors">20</span>
+                <span class="block text-white/80 text-lg uppercase tracking-wider font-bold mt-[-10px] text-shadow transition-colors">Secondes</span>
             </div>
         </div>
 
@@ -226,8 +338,8 @@
             <i class="fas fa-random"></i> Crack List ! (Nouveau Thème)
         </button>
 
-        <!-- Status Message (Caché si pas nécessaire, ou plus discret) -->
-        <div id="status-message" class="h-6 mt-2 text-white/80 font-bold uppercase tracking-wide text-center text-sm">
+        <!-- Status Message -->
+        <div id="status-message" class="h-6 mt-2 text-white/80 font-bold uppercase tracking-wide text-center text-sm transition-colors">
             PRÊT ?
         </div>
 
@@ -239,7 +351,7 @@
         <!-- Header Score -->
         <div class="flex items-center justify-between p-4 pb-2 border-b border-white/10">
             <div class="flex items-center gap-3">
-                <h2 class="text-xl font-bold flex items-center gap-2 text-white text-shadow">
+                <h2 class="text-xl font-bold flex items-center gap-2 text-white text-shadow transition-colors">
                     <i class="fas fa-crown text-yellow-300"></i> Scores
                 </h2>
                 <!-- Bouton Reset Liste -->
@@ -254,7 +366,7 @@
         </div>
 
         <!-- Add Player Form -->
-        <div id="add-player-form" class="hidden px-5 py-3 bg-black/20 backdrop-blur-md">
+        <div id="add-player-form" class="hidden px-5 py-3 bg-black/20 backdrop-blur-md transition-colors">
             <div class="flex gap-2">
                 <input type="text" id="new-player-name" placeholder="Nom du joueur..." class="flex-grow bg-white/90 text-gray-900 px-4 py-2 rounded-xl focus:outline-none focus:ring-4 focus:ring-pink-500 font-bold" onkeypress="handleEnter(event)">
                 <button onclick="addPlayer()" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-xl font-bold shadow-lg transition transform active:scale-95"><i class="fas fa-check"></i></button>
@@ -267,7 +379,7 @@
         </div>
     </section>
 
-    <!-- Audio Logic -->
+    <!-- Audio Logic & App Logic -->
     <script>
         // --- CONSTANTS & STATE ---
         const DURATION = 20;
@@ -277,6 +389,10 @@
         let isFinished = false;
         let lastSecond = DURATION; 
         
+        // Theme State
+        let isLightMode = localStorage.getItem('cracklist_theme') === 'light';
+        if(isLightMode) document.body.classList.add('light-mode');
+
         // --- AUDIO CONTEXT ---
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         
@@ -294,10 +410,9 @@
             osc.stop(audioCtx.currentTime + duration);
         }
 
-        function playTick() { playTone(800, 'sine', 0.05, 0.1); } // Tic plus doux
-        function playReset() { playTone(600, 'triangle', 0.1, 0.2); playTone(1200, 'sine', 0.1, 0.2); } // "Bling" effect
+        function playTick() { playTone(800, 'sine', 0.05, 0.1); } 
+        function playReset() { playTone(600, 'triangle', 0.1, 0.2); playTone(1200, 'sine', 0.1, 0.2); } 
         function playNewTheme() { 
-            // Son spécial pour nouveau thème (montant)
             playTone(400, 'sine', 0.1, 0.2); 
             setTimeout(() => playTone(600, 'sine', 0.1, 0.2), 100);
             setTimeout(() => playTone(800, 'sine', 0.2, 0.2), 200);
@@ -307,7 +422,6 @@
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
             osc.type = 'sawtooth';
-            // Son descendant classique "Wah wah wah"
             osc.frequency.setValueAtTime(150, audioCtx.currentTime);
             osc.frequency.linearRampToValueAtTime(50, audioCtx.currentTime + 0.8);
             gain.gain.setValueAtTime(0.5, audioCtx.currentTime); 
@@ -319,36 +433,85 @@
         }
 
         // --- DOM ELEMENTS ---
-        const timerArea = document.getElementById('timer-area'); // Main container
-        const timerContainer = document.getElementById('timer-container'); // The circle itself
+        const timerArea = document.getElementById('timer-area'); 
+        const timerContainer = document.getElementById('timer-container'); 
         const timeDisplay = document.getElementById('time-display');
         const circle = document.querySelector('.progress-ring__circle');
+        const bgCircle = document.getElementById('bg-circle');
         const statusMessage = document.getElementById('status-message');
         const gameOverScreen = document.getElementById('game-over-screen');
+        const themeIcon = document.getElementById('theme-icon');
+        const fullscreenIcon = document.getElementById('fullscreen-icon');
         
         const circumference = 2 * Math.PI * 153.6;
         
         circle.style.strokeDasharray = `${circumference} ${circumference}`;
         circle.style.strokeDashoffset = 0;
 
+        // --- THEME & FULLSCREEN LOGIC ---
+
+        function updateThemeIcon() {
+            if(isLightMode) {
+                themeIcon.className = "fas fa-moon";
+                bgCircle.setAttribute('stroke', '#e5e7eb'); // Light gray bg for circle
+            } else {
+                themeIcon.className = "fas fa-sun";
+                bgCircle.setAttribute('stroke', 'rgba(255,255,255,0.1)'); // Transparent white
+            }
+        }
+        updateThemeIcon();
+
+        function toggleTheme() {
+            isLightMode = !isLightMode;
+            document.body.classList.toggle('light-mode');
+            localStorage.setItem('cracklist_theme', isLightMode ? 'light' : 'dark');
+            updateThemeIcon();
+            updateDisplay(); // Refresh colors
+        }
+
+        function toggleFullScreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch((e) => {
+                    console.error("Fullscreen error", e);
+                });
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                }
+            }
+        }
+
+        document.addEventListener('fullscreenchange', () => {
+            if (document.fullscreenElement) {
+                fullscreenIcon.className = "fas fa-compress";
+            } else {
+                fullscreenIcon.className = "fas fa-expand";
+            }
+        });
+
+        // --- TIMER LOGIC ---
+
         function setProgress(percent) {
             const offset = circumference - (percent / 100) * circumference;
             circle.style.strokeDashoffset = offset;
             
-            // Color Logic: White -> Yellow -> Red
+            // Color Logic
             if (percent > 50) {
-                circle.style.stroke = '#ffffff'; 
-                timerContainer.style.boxShadow = '0 0 0 rgba(255,255,255,0)';
+                // > 10s
+                circle.style.stroke = isLightMode ? '#fb923c' : '#ffffff'; // Orange (dark) or White
+                timerContainer.style.boxShadow = '0 0 0 rgba(0,0,0,0)';
             } else if (percent > 20) {
-                circle.style.stroke = '#fde047'; // Yellow
-                timerContainer.style.boxShadow = '0 0 20px rgba(253, 224, 71, 0.4)';
+                // > 4s
+                circle.style.stroke = isLightMode ? '#d97706' : '#fde047'; // Darker Orange or Yellow
+                timerContainer.style.boxShadow = isLightMode 
+                    ? '0 0 20px rgba(217, 119, 6, 0.2)' 
+                    : '0 0 20px rgba(253, 224, 71, 0.4)';
             } else {
-                circle.style.stroke = '#ef4444'; // Red
+                // < 4s
+                circle.style.stroke = '#ef4444'; // Red (always red)
                 timerContainer.style.boxShadow = '0 0 30px rgba(239, 68, 68, 0.6)';
             }
         }
-
-        // --- TIMER LOGIC ---
 
         function updateDisplay() {
             timeDisplay.textContent = Math.ceil(timeLeft);
@@ -367,7 +530,7 @@
             updateDisplay();
             isFinished = true;
             statusMessage.textContent = "TEMPS ÉCOULÉ !";
-            statusMessage.style.color = "#ffcccc";
+            statusMessage.style.color = "#ef4444"; // Toujours rouge
             
             timerContainer.classList.add('shake-effect');
             playEnd();
@@ -378,7 +541,7 @@
                 timerContainer.classList.remove('shake-effect');
                 gameOverScreen.classList.remove('active');
                 statusMessage.textContent = "Appuyez pour rejouer";
-                statusMessage.style.color = "white";
+                statusMessage.style.color = isLightMode ? "#4b5563" : "white";
             }, 2000);
         }
 
@@ -390,7 +553,7 @@
             isFinished = false;
             updateDisplay();
             statusMessage.textContent = "EN COURS...";
-            statusMessage.style.color = "#a7f3d0";
+            statusMessage.style.color = isLightMode ? "#059669" : "#a7f3d0"; // Green text
             
             timerContainer.classList.remove('pulse-effect');
             void timerContainer.offsetWidth; 
@@ -420,7 +583,6 @@
             }, 50); 
         }
 
-        // Nouvelle fonction pour le bouton "Nouveau Thème"
         function hardReset() {
             stopTimer();
             timeLeft = DURATION;
@@ -429,12 +591,11 @@
             isFinished = false;
             updateDisplay();
             statusMessage.textContent = "NOUVEAU THÈME - PRÊT ?";
-            statusMessage.style.color = "white";
+            statusMessage.style.color = isLightMode ? "#1f2937" : "white";
             
-            // Animation reset visuel
             timerContainer.classList.remove('pulse-effect');
             void timerContainer.offsetWidth; 
-            timerContainer.style.boxShadow = '0 0 0 rgba(255,255,255,0)';
+            timerContainer.style.boxShadow = '0 0 0 rgba(0,0,0,0)';
             
             playNewTheme();
         }
@@ -444,7 +605,6 @@
             if (e.target.closest('button') || e.target.closest('input') || e.target.closest('section')) return;
             if (gameOverScreen.classList.contains('active')) return;
 
-            // On ne réagit que si on clique sur le timer ou la zone principale, pas les boutons
             e.preventDefault(); 
 
             if (isFinished) {
@@ -456,7 +616,6 @@
             }
         }
 
-        // Écouteur sur la zone principale
         timerArea.addEventListener('mousedown', handleTap);
         timerArea.addEventListener('touchstart', handleTap);
         
@@ -488,7 +647,7 @@
                         <span class="font-bold text-lg text-white truncate max-w-[120px] md:max-w-xs drop-shadow-sm">${player.name}</span>
                     </div>
                     <div class="flex items-center gap-2">
-                        <div class="bg-white/10 px-3 py-1 rounded-lg">
+                        <div class="player-score-bg bg-white/10 px-3 py-1 rounded-lg">
                             <span class="text-2xl font-mono font-bold text-yellow-300 drop-shadow-md">${player.score}</span>
                         </div>
                         <button onclick="addPoint(${index})" class="bg-white text-purple-700 hover:bg-yellow-300 hover:text-black w-10 h-10 rounded-xl flex items-center justify-center transition active:scale-90 font-bold shadow-lg">
@@ -537,7 +696,6 @@
             }
         }
 
-        // Nouvelle fonction pour tout effacer
         function clearAllPlayers() {
             if(players.length > 0 && confirm('Voulez-vous vraiment effacer toute la liste des joueurs ?')) {
                 players = [];
